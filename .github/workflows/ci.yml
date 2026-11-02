@@ -1,0 +1,83 @@
+name: DefectLens AI — CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install CPU-only PyTorch
+        run: |
+          pip install torch==2.0.1+cpu torchvision==0.15.2+cpu \
+            --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install project dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          # Fail on syntax errors or undefined names; warn on style
+          flake8 src/ scripts/ app/ tests/ \
+            --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 src/ scripts/ app/ tests/ \
+            --count --exit-zero --max-complexity=12 --max-line-length=100 \
+            --statistics
+
+      - name: Run tests with coverage
+        run: |
+          pip install pytest-cov
+          pytest tests/ \
+            --cov=src/defectlens \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -v
+
+      - name: Upload coverage report
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  lint-check:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install linting tools
+        run: pip install flake8 black isort
+      - name: Check formatting (black)
+        run: black --check --diff src/ tests/ scripts/ app/
+      - name: Check import ordering (isort)
+        run: isort --check-only --diff src/ tests/ scripts/ app/

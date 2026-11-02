@@ -1,0 +1,50 @@
+project:
+  name: "DefectLens AI"
+  seed: 42
+
+data:
+  root: "data/mvtec_ad"
+  categories:
+    - "bottle"
+    - "cable"
+    - "capsule"
+    - "carpet"
+    - "grid"
+    - "hazelnut"
+    - "leather"
+    - "metal_nut"
+    - "pill"
+    - "screw"
+    - "tile"
+    - "toothbrush"
+    - "transistor"
+    - "wood"
+    - "zipper"
+  image_size: 256
+  batch_size: 16
+  num_workers: 0
+
+model:
+  backbone: "resnet18"
+  pretrained: true
+  num_classes: 2
+
+training:
+  epochs: 20
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  optimizer: "adam"
+  scheduler: "cosine"
+  early_stopping_patience: 5
+
+evaluation:
+  threshold: 0.5
+
+inference:
+  device: "auto"
+  batch_size: 1
+
+output:
+  dir: "outputs"
+  save_predictions: true
+  save_visualizations: true
